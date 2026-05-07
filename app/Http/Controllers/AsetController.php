@@ -88,8 +88,20 @@ class AsetController extends Controller
     {
         abort_if(!auth()->user()->hasPermission('products.import'), 403);
         $request->validate(['file' => 'required|mimes:xlsx,xls,csv']);
-        Excel::import(new ProductsImport, $request->file('file'));
-        return back()->with('success', __('Data aset berhasil diimport.'));
+
+        try {
+            Excel::import(new ProductsImport, $request->file('file'));
+            return back()->with('success', __('Data aset berhasil diimport.'));
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errorMsg = 'Gagal Import: <br>';
+            foreach ($failures as $failure) {
+                $errorMsg .= "Baris {$failure->row()}: " . implode(', ', $failure->errors()) . "<br>";
+            }
+            return back()->with('error', $errorMsg);
+        } catch (\Exception $e) {
+            return back()->with('error', __('Gagal mengimpor data: ') . $e->getMessage());
+        }
     }
 
     /* | [PROSEDUR] | \n       | Kegunaan: Menampilkan form untuk menambah aset baru.\n    */

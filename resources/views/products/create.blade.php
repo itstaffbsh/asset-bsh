@@ -163,11 +163,13 @@
                     $('#nomor_unik').prop('disabled', true).val("{{ __('Memuat...') }}");
                     $('#nomor-status').text("🔄 {{ __('Mengambil nomor...') }}").removeClass('text-green-600 text-red-500').addClass('text-gray-400');
 
-                    const url = "{{ route('products.nextNomor', ':id') }}".replace(':id', deptId);
+                    const url = "{{ route('products.nextNomor', ['department_id' => ':id']) }}".replace(':id', deptId);
                     $.getJSON(url, function(data) {
                         $('#nomor_unik').prop('disabled', false).val(data.next_nomor);
                         $('#nomor-status').text("✅ {{ __('Nomor otomatis — bisa diubah jika perlu') }}").removeClass('text-gray-400 text-red-500').addClass('text-green-600');
-                    }).fail(function() {
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        console.error("AJAX Error:", textStatus, errorThrown);
+                        console.error("Response:", jqXHR.responseText);
                         $('#nomor_unik').prop('disabled', false).val('');
                         $('#nomor-status').text("⚠️ {{ __('Gagal mengambil nomor, isi manual') }}").removeClass('text-gray-400 text-green-600').addClass('text-red-500');
                     });

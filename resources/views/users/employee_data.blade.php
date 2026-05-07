@@ -38,7 +38,7 @@
                     <div class="bg-[#d4ebd0] text-[#3a5a3a] p-4 rounded-md mb-6 border border-[#b8deb2] font-bold">{{ session('success') }}</div>
                 @endif
                 @if(session('error'))
-                    <div class="bg-red-100 text-red-700 p-4 rounded-md mb-6 border border-red-200">{{ session('error') }}</div>
+                    <div class="bg-red-100 text-red-700 p-4 rounded-md mb-6 border border-red-200">{!! session('error') !!}</div>
                 @endif
 
                 @if(!\Illuminate\Support\Facades\Schema::hasColumn('users', 'status'))
@@ -112,7 +112,7 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-[#f9f8f6] border-b border-[#e5e0d8]">
-                                <th class="py-3 px-4 font-semibold text-[#5c6b5b] text-[10px] uppercase tracking-wider">{{ __('ID / Role') }}</th>
+                                <th class="py-3 px-4 font-semibold text-[#5c6b5b] text-[10px] uppercase tracking-wider">{{ __('Employee ID') }}</th>
                                 <th class="py-3 px-4 font-semibold text-[#5c6b5b] text-[10px] uppercase tracking-wider">{{ __('Karyawan') }}</th>
                                 <th class="py-3 px-4 font-semibold text-[#5c6b5b] text-[10px] uppercase tracking-wider">{{ __('Jabatan / Level') }}</th>
                                 <th class="py-3 px-4 font-semibold text-[#5c6b5b] text-[10px] uppercase tracking-wider">{{ __('Kontak') }}</th>
@@ -124,20 +124,7 @@
                             @foreach($users as $user)
                             <tr class="border-b border-[#f4f1ea] hover:bg-[#faf9f7] transition">
                                 <td class="py-4 px-4">
-                                    <div class="text-xs font-mono text-gray-400 mb-1">#{{ $user->employee_id }}</div>
-                                    @php
-                                        $badgeClass = match($user->role) {
-                                            'managing_director' => 'bg-red-100 text-red-700 border-red-200',
-                                            'director'          => 'bg-orange-100 text-orange-700 border-orange-200',
-                                            'manager'           => 'bg-green-100 text-green-700 border-green-200',
-                                            'superadmin'        => 'bg-purple-100 text-purple-700 border-purple-200',
-                                            'admin'             => 'bg-blue-100 text-blue-700 border-blue-200',
-                                            default             => 'bg-gray-100 text-gray-600 border-gray-200',
-                                        };
-                                    @endphp
-                                    <span class="px-2 py-0.5 rounded-full {{ $badgeClass }} border font-bold text-[8px] uppercase">
-                                        {{ __($user->role) }}
-                                    </span>
+                                    <div class="text-xs font-mono text-gray-400">#{{ $user->employee_id }}</div>
                                 </td>
                                 <td class="py-4 px-4">
                                     <div class="font-bold text-[#4a554a]">{{ $user->name }}</div>
@@ -165,7 +152,9 @@
                                         @if(auth()->user()->hasPermission('users.edit_employee'))
                                             <a href="{{ route('employees.edit', $user->id) }}" class="p-1.5 bg-gray-50 rounded-lg hover:bg-gray-200 transition" title="{{ __('Edit Karyawan') }}">✏️</a>
                                         @endif
-                                        <a href="{{ route('employees.details', $user->id) }}" class="p-1.5 bg-gray-50 rounded-lg hover:bg-gray-200 transition inline-block" title="{{ __('Detail') }}">👁️</a>
+                                        @if(auth()->user()->hasPermission('users.delete'))
+                                            <button type="button" onclick="openDeleteEmployeeModal('{{ route('employees.destroy', $user->id) }}', '{{ $user->name }}')" class="p-1.5 bg-red-50 rounded-lg hover:bg-red-100 transition" title="{{ __('Hapus Karyawan') }}">🗑️</button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -185,4 +174,64 @@
         </div>
     </div>
 
+    {{-- Delete Employee Modal --}}
+    <div id="deleteEmployeeModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true" onclick="closeDeleteEmployeeModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                <form id="deleteEmployeeForm" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <div>
+                        <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
+                            <svg class="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-5">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900" id="modal-title">{{ __('Hapus Karyawan') }}</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500">{{ __('Apakah Anda yakin ingin menghapus data karyawan') }} <span id="deleteEmployeeName" class="font-bold"></span>? {{ __('Tindakan ini tidak dapat dibatalkan.') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                        <button type="submit" class="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm">{{ __('Hapus Data') }}</button>
+                        <button type="button" onclick="closeDeleteEmployeeModal()" class="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c6b5b] sm:mt-0 sm:col-start-1 sm:text-sm">{{ __('Batal') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openDeleteEmployeeModal(actionUrl, name) {
+            document.getElementById('deleteEmployeeForm').action = actionUrl;
+            document.getElementById('deleteEmployeeName').textContent = name;
+            document.getElementById('deleteEmployeeModal').classList.remove('hidden');
+        }
+
+        function closeDeleteEmployeeModal() {
+            document.getElementById('deleteEmployeeModal').classList.add('hidden');
+        }
+
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: "{{ session('success') }}",
+                confirmButtonColor: '#5c6b5b'
+            });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                html: "{!! session('error') !!}",
+                confirmButtonColor: '#5c6b5b'
+            });
+        @endif
+    </script>
 </x-app-layout>

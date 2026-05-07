@@ -172,6 +172,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/accounts/resigned', [UserController::class, 'resignedIndex'])->name('accounts.resigned')->middleware('permission:users.view_resigned');
     Route::post('/accounts/{user}/resign', [UserController::class, 'resign'])->name('accounts.resign')->middleware('permission:users.resign');
     Route::post('/accounts/{user}/make-admin', [UserController::class, 'makeAdmin'])->name('accounts.make-admin')->middleware('permission:users.edit_role');
+    Route::delete('/employees/{user}', [UserController::class, 'destroy'])->name('employees.destroy')->middleware('permission:users.delete');
 
     // === [ MASTER DATA ] ===
     Route::resource('offices', \App\Http\Controllers\OfficeController::class)->middleware('permission:master.offices');

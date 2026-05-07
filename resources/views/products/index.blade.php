@@ -38,6 +38,10 @@
                     <div class="bg-[#d4ebd0] text-[#3a5a3a] p-4 rounded-md mb-6 border border-[#b8deb2]">{{ session('success') }}</div>
                 @endif
 
+                @if(session('error'))
+                    <div class="bg-red-100 text-red-700 p-4 rounded-md mb-6 border border-red-200">{!! session('error') !!}</div>
+                @endif
+
                 {{-- Search & Filter Bar --}}
                 <div class="mb-6">
                     <form action="{{ route('products.index') }}" method="GET" id="filter-form-assets">
@@ -273,5 +277,24 @@
             }
             return rupiah;
         }
+    </script>
+    <script>
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: "{{ session('success') }}",
+                confirmButtonColor: '#5c6b5b'
+            });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                html: "{!! session('error') !!}",
+                confirmButtonColor: '#5c6b5b'
+            });
+        @endif
     </script>
 </x-app-layout>

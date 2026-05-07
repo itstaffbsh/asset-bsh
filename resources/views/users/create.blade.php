@@ -56,7 +56,8 @@
 
                 <div class="mb-8">
                     <label class="block text-[#5c6b5b] text-sm font-bold uppercase tracking-widest mb-2">{{ __('Password Login') }} <span class="text-red-500">*</span></label>
-                    <input type="password" name="password" class="w-full border-[#d1cdba] rounded-md shadow-sm focus:border-[#a47b53] focus:ring-[#a47b53] focus:ring-opacity-20 py-3" placeholder="{{ __('Minimal 8 karakter') }}" required>
+                    <input type="password" name="password" value="Balibsh@1234" class="w-full border-[#d1cdba] rounded-md shadow-sm focus:border-[#a47b53] focus:ring-[#a47b53] focus:ring-opacity-20 py-3" placeholder="{{ __('Min 8 Karakter, 1 Kapital, 1 Angka, 1 Simbol') }}" required>
+                    <p class="text-[10px] text-gray-400 mt-1 uppercase italic">{{ __('Contoh: Balibsh@1234') }}</p>
                 </div>
 
                 <div class="flex items-center gap-4">

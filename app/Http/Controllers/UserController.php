@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\Rules\Password;
 
 /* |--------------------------------------------------------------------------
    | [CONTROLLER USER / KARYAWAN]
@@ -119,7 +121,7 @@ class UserController extends Controller
         $request->validate([
             'user_id'       => 'required|exists:users,id',
             'role_id'       => 'required|exists:roles,id',
-            'password'      => 'required|min:8',
+            'password'      => ['required', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         $role = \App\Models\Role::find($request->role_id);
@@ -163,8 +165,8 @@ class UserController extends Controller
             'email'         => 'required|email|unique:users',
             'office_id'     => 'required|exists:offices,id',
             'department_id' => 'nullable|exists:departments,id',
-            'job_position'  => 'nullable|string|max:255',
-            'job_level'     => 'nullable|string|max:255',
+            'job_position'  => 'required|string|max:255',
+            'job_level'     => 'required|in:Director,Manager,Assistant Manager,Supervisor,Staff,Assistant Director',
             'join_date'     => 'nullable|date',
             'phone_number'  => 'nullable|string|max:20',
         ]);
@@ -205,8 +207,8 @@ class UserController extends Controller
             'email'         => 'required|email|unique:users,email,' . $user->id,
             'office_id'     => 'required|exists:offices,id',
             'department_id' => 'nullable|exists:departments,id',
-            'job_position'  => 'nullable|string|max:255',
-            'job_level'     => 'nullable|string|max:255',
+            'job_position'  => 'required|string|max:255',
+            'job_level'     => 'required|in:Director,Manager,Assistant Manager,Supervisor,Staff,Assistant Director',
             'join_date'     => 'nullable|date',
             'phone_number'  => 'nullable|string|max:20',
         ]);
@@ -423,11 +425,44 @@ class UserController extends Controller
         abort_if(!auth()->user()->hasPermission('users.import'), 403);
 
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls',
+            'file' => 'required|mimes:xlsx,xls,csv',
         ]);
 
-        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\UsersImport, $request->file('file'));
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\UsersImport, $request->file('file'));
+            return back()->with('success', __('Data karyawan berhasil diimpor.'));
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errorMsg = 'Gagal Import: <br>';
+            foreach ($failures as $failure) {
+                $errorMsg .= "Baris {$failure->row()}: " . implode(', ', $failure->errors()) . "<br>";
+            }
+            return back()->with('error', $errorMsg);
+        } catch (\Exception $e) {
+            return back()->with('error', __('Gagal mengimpor data: ') . $e->getMessage());
+        }
+    }
 
-        return back()->with('success', __('Data karyawan berhasil diimpor.'));
+    public function destroy(User $user)
+    {
+        abort_if(!auth()->user()->hasPermission('users.delete'), 403);
+
+        if ($user->id === auth()->id()) {
+            return back()->with('error', __('Anda tidak bisa menghapus diri sendiri.'));
+        }
+
+        // Cek apakah masih ada barang yang dipinjam
+        $activeCount = \App\Models\ProductHistory::whereIn('id', function($query) {
+            $query->selectRaw('MAX(id)')->from('product_histories')->groupBy('product_id');
+        })->where('diterima_oleh', $user->id)
+          ->where('jenis_transaksi', 'meminjam')
+          ->count();
+
+        if ($activeCount > 0) {
+            return back()->with('error', __('Gagal Hapus: Karyawan masih memegang :count aset. Kembalikan semua aset terlebih dahulu.', ['count' => $activeCount]));
+        }
+
+        $user->delete();
+        return back()->with('success', __('Karyawan :name berhasil dihapus.', ['name' => $user->name]));
     }
 }

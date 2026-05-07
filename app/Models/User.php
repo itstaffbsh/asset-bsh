@@ -120,8 +120,10 @@ class User extends Authenticatable
     {
         static::creating(function ($user) {
             if (empty($user->employee_id)) {
-                $maxId = static::max('employee_id');
-                // Mengambil angka terakhir, tambah 1, lalu pad dengan nol di depan (contoh: 00001)
+                // Get the maximum numeric value of employee_id
+                $maxId = static::selectRaw('MAX(CAST(employee_id AS UNSIGNED)) as max_id')->value('max_id');
+                
+                // Increment and pad with zeros
                 $nextId = $maxId ? (int)$maxId + 1 : 1;
                 $user->employee_id = str_pad($nextId, 5, '0', STR_PAD_LEFT);
             }

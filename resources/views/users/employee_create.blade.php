@@ -64,12 +64,17 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-[#5c6b5b] mb-1">{{ __('Jabatan') }}</label>
-                        <input type="text" name="job_position" value="{{ old('job_position') }}" class="w-full border-[#d1cdba] rounded-lg shadow-sm focus:border-[#a47b53]">
+                        <label class="block text-sm font-bold text-[#5c6b5b] mb-1">{{ __('Jabatan') }} <span class="text-red-500">*</span></label>
+                        <input type="text" name="job_position" value="{{ old('job_position') }}" required class="w-full border-[#d1cdba] rounded-lg shadow-sm focus:border-[#a47b53]" placeholder="{{ __('Masukkan jabatan...') }}">
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-[#5c6b5b] mb-1">{{ __('Job Level') }}</label>
-                        <input type="text" name="job_level" value="{{ old('job_level') }}" class="w-full border-[#d1cdba] rounded-lg shadow-sm focus:border-[#a47b53]">
+                        <label class="block text-sm font-bold text-[#5c6b5b] mb-1">{{ __('Job Level') }} <span class="text-red-500">*</span></label>
+                        <select name="job_level" required class="w-full border-[#d1cdba] rounded-lg shadow-sm focus:border-[#a47b53]">
+                            <option value="">{{ __('-- Pilih Job Level --') }}</option>
+                            @foreach(['Director', 'Manager', 'Assistant Manager', 'Supervisor', 'Staff', 'Assistant Director'] as $level)
+                                <option value="{{ $level }}" {{ old('job_level') == $level ? 'selected' : '' }}>{{ $level }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-[#5c6b5b] mb-1">{{ __('Tanggal Bergabung') }}</label>

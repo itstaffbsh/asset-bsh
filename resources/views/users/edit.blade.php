@@ -109,7 +109,7 @@
                 @if(auth()->user()->hasPermission('users.edit_role'))
                 <div id="password-container" class="mb-5">
                     <label class="block text-[#5c6b5b] text-xs font-bold uppercase tracking-widest mb-2">{{ __('Ganti Password') }}</label>
-                    <input type="password" name="password" class="w-full border-[#d1cdba] rounded-md shadow-sm focus:border-[#a47b53] focus:ring-[#a47b53] focus:ring-opacity-20" placeholder="{{ __('Kosongkan jika tidak ingin ganti') }}">
+                    <input type="password" name="password" class="w-full border-[#d1cdba] rounded-md shadow-sm focus:border-[#a47b53] focus:ring-[#a47b53] focus:ring-opacity-20" placeholder="{{ __('Kosongkan jika tidak ingin ganti. Syarat: Min 8 Karakter, 1 Kapital, 1 Angka, 1 Simbol') }}">
                 </div>
                 @endif
 

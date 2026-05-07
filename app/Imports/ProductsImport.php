@@ -59,15 +59,10 @@ class ProductsImport implements ToModel, WithHeadingRow
 
         if ($employeeId && $employeeId !== '-' && $employeeId !== 'Kosong') {
             $user = User::where('employee_id', $employeeId)->first();
+            
             if (!$user && $name && $name !== 'DI KANTOR' && $name !== 'Kosong') {
-                $user = User::create([
-                    'employee_id' => $employeeId,
-                    'name' => $name,
-                    'email' => strtolower(Str::slug($name)) . '@bsh.com',
-                    'role' => 'user',
-                    'office_id' => 1,
-                    'department_id' => $department->id,
-                ]);
+                // Jangan buat user otomatis, berikan error saja agar user tahu data tidak sinkron
+                throw new \Exception("Karyawan dengan ID '{$employeeId}' tidak ditemukan di sistem. Harap masukkan data karyawan tersebut terlebih dahulu.");
             }
         }
 
