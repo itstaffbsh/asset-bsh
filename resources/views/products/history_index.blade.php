@@ -79,7 +79,7 @@
                                 <th class="py-4 px-6 font-semibold text-[#5c6b5b]">{{ __('Dari (Pengirim)') }}</th>
                                 <th class="py-4 px-6 font-semibold text-[#5c6b5b]">{{ __('Ke (Penerima)') }}</th>
                                 <th class="py-4 px-6 font-semibold text-[#5c6b5b] text-center">{{ __('STTB') }}</th>
-                                @if(auth()->user()->hasPermission('transactions.history'))
+                                @if(auth()->user()->hasPermission('transactions.edit_history'))
                                 <th class="py-4 px-6 font-semibold text-[#5c6b5b] text-center">{{ __('Aksi') }}</th>
                                 @endif
                             </tr>
@@ -135,7 +135,7 @@
                                     @endif
                                 </td>
                                 
-                                @if(auth()->user()->hasPermission('transactions.history'))
+                                @if(auth()->user()->hasPermission('transactions.edit_history'))
                                 <td class="py-4 px-6 text-center">
                                     <div class="flex items-center justify-center space-x-3">
                                         <a href="{{ route('history.edit', $history->id) }}" class="text-blue-500 hover:text-blue-700 text-xs font-medium bg-blue-50 px-2 py-1 rounded">{{ __('Edit') }}</a>

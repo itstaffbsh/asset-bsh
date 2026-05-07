@@ -30,6 +30,8 @@ class ProductController extends Controller
     */
     public function index()
     {
+        abort_if(!auth()->user()->hasPermission('products.view'), 403);
+
         /* | [ARRAY/KOLEKSI] | 
            | Mengambil semua data aset dari database beserta relasi departemennya.
         */
@@ -40,11 +42,15 @@ class ProductController extends Controller
 
     public function export()
     {
+        abort_if(!auth()->user()->hasPermission('products.export'), 403);
+
         return Excel::download(new ProductsExport, 'data_aset_it.xlsx');
     }
 
     public function import(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('products.import'), 403);
+
         $request->validate(['file' => 'required|mimes:xlsx,xls,csv']);
         Excel::import(new ProductsImport, $request->file('file'));
         return back()->with('success', 'Data aset berhasil diimport.');
@@ -52,6 +58,8 @@ class ProductController extends Controller
 
     public function create()
     {
+        abort_if(!auth()->user()->hasPermission('products.create'), 403);
+
         $departments = Department::all();
         $classifications = Classification::all();
         return view('products.create', compact('departments', 'classifications'));
@@ -59,6 +67,8 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('products.create'), 403);
+
         $request->validate([
             'nama_asset'       => 'required|string|max:255',
             'classification_id'=> 'required|exists:classifications,id',
@@ -110,12 +120,16 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
+        abort_if(!auth()->user()->hasPermission('products.view'), 403);
+
         $product->load(['department', 'classification', 'histories.sender', 'histories.receiver.office']);
         return view('products.show', compact('product'));
     }
 
     public function edit(Product $product)
     {
+        abort_if(!auth()->user()->hasPermission('products.edit'), 403);
+
         $departments = Department::all();
         $classifications = Classification::all();
         return view('products.edit', compact('product', 'departments', 'classifications'));
@@ -123,6 +137,8 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        abort_if(!auth()->user()->hasPermission('products.edit'), 403);
+
         $request->validate([
             'nama_asset'       => 'required|string|max:255',
             'classification_id'=> 'required|exists:classifications,id',
@@ -173,6 +189,8 @@ class ProductController extends Controller
 
     public function destroy(Request $request, Product $product)
     {
+        abort_if(!auth()->user()->hasPermission('products.delete'), 403);
+
         $hargaJual = $request->selling_price ? (int) str_replace('.', '', $request->selling_price) : null;
         
         $product->update([
@@ -186,12 +204,16 @@ class ProductController extends Controller
 
     public function trashIndex()
     {
+        abort_if(!auth()->user()->hasPermission('products.trash'), 403);
+
         $trashedProducts = Product::onlyTrashed()->with(['department', 'classification'])->get();
         return view('products.trash', compact('trashedProducts'));
     }
 
     public function restore($id)
     {
+        abort_if(!auth()->user()->hasPermission('products.trash'), 403);
+
         $product = Product::onlyTrashed()->findOrFail($id);
         $product->restore();
         return redirect()->route('products.trash')->with('success', 'Aset berhasil dikembalikan (Restore).');
@@ -199,6 +221,8 @@ class ProductController extends Controller
 
     public function forceDelete($id)
     {
+        abort_if(!auth()->user()->hasPermission('products.trash'), 403);
+
         $product = Product::onlyTrashed()->findOrFail($id);
         $product->histories()->delete(); 
         $product->forceDelete();
@@ -214,11 +238,15 @@ class ProductController extends Controller
 
     public function pinjam(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.transfer'), 403);
+
         return $this->handleTransfer($request, 'meminjam');
     }
 
     public function kembali(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.transfer'), 403);
+
         return $this->handleTransfer($request, 'kembali');
     }
 
@@ -286,6 +314,8 @@ class ProductController extends Controller
 
     public function historyIndex(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.history'), 403);
+
         $query = ProductHistory::with(['product.department', 'sender', 'receiver.office'])->latest();
         
         if ($request->has('q') && $request->q != '') {
@@ -306,12 +336,16 @@ class ProductController extends Controller
 
     public function editHistory(ProductHistory $productHistory)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.edit_history'), 403);
+
         $users = User::where('role', 'user')->with('office')->get();
         return view('products.edit_history', compact('productHistory', 'users'));
     }
 
     public function updateHistory(Request $request, ProductHistory $productHistory)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.edit_history'), 403);
+
         $request->validate([
             'diterima_oleh'   => 'required|exists:users,id',
         ]);
@@ -325,6 +359,8 @@ class ProductController extends Controller
 
     public function cancelHistory(ProductHistory $productHistory)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.edit_history'), 403);
+
         $productHistory->delete();
         return back()->with('success', 'Riwayat berhasil dibatalkan.');
     }

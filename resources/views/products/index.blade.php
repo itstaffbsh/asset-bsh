@@ -3,13 +3,13 @@
         <div class="flex justify-between items-center">
             <h2 class="font-serif text-2xl font-bold text-[#4a554a] leading-tight">{{ __('Daftar Aset IT') }}</h2>
             <div class="flex gap-2">
-                @if(auth()->user()->hasPermission('assets.export'))
+                @if(auth()->user()->hasPermission('products.export'))
                     <a href="{{ route('products.export') }}" class="bg-[#a47b53] text-white px-4 py-2 rounded-md shadow hover:bg-[#8b6540] transition font-bold text-sm">{{ __('EXPORT EXCEL') }}</a>
                 @endif
-                @if(auth()->user()->hasPermission('assets.import'))
+                @if(auth()->user()->hasPermission('products.import'))
                     <button onclick="document.getElementById('import-modal-asset').classList.remove('hidden')" class="bg-[#d1cdba] text-[#4a554a] px-4 py-2 rounded-md shadow hover:bg-[#c4c0a8] transition font-bold text-sm">{{ __('IMPORT EXCEL') }}</button>
                 @endif
-                @if(auth()->user()->hasPermission('assets.create'))
+                @if(auth()->user()->hasPermission('products.create'))
                     <a href="{{ route('products.create') }}" class="bg-[#5c6b5b] text-[#f4f1ea] px-4 py-2 rounded-md shadow hover:bg-[#4a554a] transition font-bold text-sm">+ {{ __('TAMBAH ASET') }}</a>
                 @endif
             </div>
@@ -155,11 +155,11 @@
                                         <a href="{{ route('products.show', $product->id) }}" class="p-1.5 bg-gray-50 rounded-lg hover:bg-gray-200 transition" title="{{ __('Detail') }}">👁️</a>
                                         <a href="{{ route('products.qr', $product->id) }}" class="p-1.5 bg-gray-50 rounded-lg hover:bg-gray-200 transition" title="{{ __('QR') }}">📱</a>
                                         
-                                        @if(auth()->user()->hasPermission('assets.edit'))
+                                        @if(auth()->user()->hasPermission('products.edit'))
                                             <a href="{{ route('products.edit', $product->id) }}" class="p-1.5 bg-gray-50 rounded-lg hover:bg-gray-200 transition" title="{{ __('Edit') }}">✏️</a>
                                         @endif
 
-                                        @if(auth()->user()->hasPermission('assets.delete'))
+                                        @if(auth()->user()->hasPermission('products.delete'))
                                             <button type="button" onclick="openDeleteModal('{{ route('products.destroy', $product->id) }}', '{{ $product->description }}')" class="p-1.5 bg-red-50 rounded-lg hover:bg-red-100 transition" title="{{ __('Hapus') }}">🗑️</button>
                                         @endif
                                     </div>

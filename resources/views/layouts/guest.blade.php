@@ -25,10 +25,7 @@
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
             <div class="text-center mb-8">
                 <a href="/" class="flex flex-col items-center gap-2">
-                    <div class="w-16 h-16 bg-[#5c6b5b] rounded-2xl flex items-center justify-center text-white text-3xl shadow-lg">
-                        🏰
-                    </div>
-                    <h1 class="font-serif text-3xl font-bold text-[#4a554a] tracking-tight mt-2">BSH FIX</h1>
+                    <img src="{{ asset('images/Primier-Logo.webp') }}" alt="BSH Logo" class="h-16 w-auto object-contain">
                     <p class="text-xs text-[#a47b53] uppercase tracking-[0.3em] font-bold">{{ __('Sistem Manajemen Aset') }}</p>
                 </a>
             </div>

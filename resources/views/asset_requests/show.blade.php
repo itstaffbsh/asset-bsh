@@ -23,40 +23,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
         
-        .signature-box {
-            position: relative;
-            padding: 10px;
-            border-left: 2px solid #10b981;
-            border-bottom: 2px solid #10b981;
-            border-bottom-left-radius: 8px;
-            background: rgba(16, 185, 129, 0.03);
-            min-height: 100px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .signature-font {
-            font-family: 'Dancing Script', cursive;
-            font-size: 1.8rem;
-            color: #1e293b;
-            line-height: 1;
-        }
-        .signature-img {
-            max-height: 60px;
-            object-fit: contain;
-            mix-blend-mode: multiply;
-        }
-        .signed-badge {
-            position: absolute;
-            top: -8px;
-            left: 10px;
-            background: white;
-            padding: 0 5px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
+
     </style>
 
     <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 pb-12">
@@ -119,6 +86,22 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    @php
+                                        $stages = ['pending_hr', 'pending_dept', 'pending_it', 'pending_md', 'pending_fulfillment', 'approved'];
+                                        $currentStatusIndex = array_search($assetRequest->status, $stages);
+                                        
+                                        // Tentukan stage terakhir yang sudah diproses
+                                        if ($assetRequest->status == 'rejected') {
+                                            $lastApproval = $assetRequest->approvals->where('status', 'rejected')->last();
+                                            $rejectionLevel = $lastApproval ? $lastApproval->level : 'none';
+                                            $levelIndexMap = ['hr' => 0, 'dept' => 1, 'it' => 2, 'md' => 3, 'executor' => 4, 'none' => -1];
+                                            $lastProcessedIndex = $levelIndexMap[$rejectionLevel] ?? -1;
+                                        } else {
+                                            $lastProcessedIndex = ($currentStatusIndex !== false) ? $currentStatusIndex - 1 : -1;
+                                            // Kasus khusus HR: hr_manager_id menandakan HR sudah proses
+                                            if ($assetRequest->hr_manager_id && $lastProcessedIndex < 0) $lastProcessedIndex = 0;
+                                        }
+                                    @endphp
                                     @foreach($assetRequest->items as $item)
                                         <tr class="border-b border-[#f0eee9]">
                                             <td class="p-4 font-bold">{{ $item->classification->nama_klasifikasi }}</td>
@@ -126,7 +109,7 @@
                                             <td class="p-4 text-center">{{ $item->qty }}</td>
                                              {{-- HR: tampil setelah HR approve (hr_manager_id terisi) --}}
                                             <td class="p-4 text-center">
-                                                @if(!$assetRequest->hr_manager_id)
+                                                @if($lastProcessedIndex < 0)
                                                     <span class="text-gray-200">—</span>
                                                 @else
                                                     <div class="flex flex-col items-center gap-1">
@@ -148,7 +131,7 @@
 
                                             {{-- DEPT: tampil setelah status melewati pending_dept --}}
                                             <td class="p-4 text-center">
-                                                @if(in_array($assetRequest->status, ['pending_hr', 'pending_dept']))
+                                                @if($lastProcessedIndex < 1)
                                                     <span class="text-gray-200">—</span>
                                                 @else
                                                     <div class="flex flex-col items-center gap-1">
@@ -170,7 +153,7 @@
 
                                             {{-- IT: tampil setelah status melewati pending_it --}}
                                             <td class="p-4 text-center">
-                                                @if(in_array($assetRequest->status, ['pending_hr', 'pending_dept', 'pending_it']))
+                                                @if($lastProcessedIndex < 2)
                                                     <span class="text-gray-200">—</span>
                                                 @else
                                                     <div class="flex flex-col items-center gap-1">
@@ -192,7 +175,7 @@
 
                                             {{-- MD: tampil setelah status melewati pending_md --}}
                                             <td class="p-4 text-center">
-                                                @if(in_array($assetRequest->status, ['pending_hr', 'pending_dept', 'pending_it', 'pending_md']))
+                                                @if($lastProcessedIndex < 3)
                                                     <span class="text-gray-200">—</span>
                                                 @else
                                                     <div class="flex flex-col items-center gap-1">
@@ -254,7 +237,7 @@
                 </div>
 
                 {{-- KOLOM ADMIN FULFILLMENT --}}
-                @if($assetRequest->status == 'pending_fulfillment' && auth()->user()->hasRoleLevel('superadmin'))
+                @if($assetRequest->status == 'pending_fulfillment' && auth()->user()->hasPermission('requests.finalize'))
                     <div class="bg-white rounded-xl border-2 border-green-600 p-6 shadow-lg mt-6">
                         <h4 class="font-serif font-bold text-[#4a554a] mb-4 flex items-center">
                             <span class="mr-2">🔧</span> {{ __('Finalisasi IT Fulfillment') }}
@@ -263,9 +246,29 @@
                         
                         <form action="{{ route('asset-requests.finalize', $assetRequest) }}" method="POST">
                             @csrf
+                            <div class="space-y-4 mb-6">
+                                @foreach($assetRequest->items as $item)
+                                    @if($item->it_approval) {{-- Hanya yang disetujui IT --}}
+                                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">{{ __('Pilih Aset Untuk') }}: {{ $item->classification->nama_klasifikasi }}</p>
+                                            <select name="products[{{ $item->id }}]" class="w-full text-sm rounded-lg border-[#e5e0d8] focus:border-green-500 py-2">
+                                                <option value="">-- {{ __('Pilih Inventaris') }} --</option>
+                                                @if(isset($availableProducts[$item->classification_id]))
+                                                    @foreach($availableProducts[$item->classification_id] as $p)
+                                                        <option value="{{ $p->id }}">
+                                                            {{ $item->classification->nama_klasifikasi }} {{ $p->full_nomor_unik }} (S/N: {{ $p->serial_number ?? '-' }})
+                                                        </option>
+                                                    @endforeach
+                                                @endif
+                                            </select>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+
                             <div class="mb-4">
-                                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">{{ __('Catatan IT / Jenis Laptop') }}</label>
-                                <textarea name="admin_notes" rows="3" class="w-full text-sm rounded-lg border-[#e5e0d8] focus:border-green-500" placeholder="{{ __('Contoh: Diberikan Laptop Dell Latitude 5420 S/N: XXXX') }}"></textarea>
+                                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">{{ __('Catatan Akhir / Fulfillment Notes') }}</label>
+                                <textarea name="admin_notes" rows="3" class="w-full text-sm rounded-lg border-[#e5e0d8] focus:border-green-500" placeholder="{{ __('Tambahkan catatan tambahan jika diperlukan...') }}"></textarea>
                             </div>
                             <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition shadow-md">
                                 {{ __('Selesaikan & Siap Cetak') }}
@@ -275,10 +278,33 @@
                 @endif
 
                 {{-- INFO FULFILLMENT (SETELAH SELESAI) --}}
-                @if($assetRequest->admin_notes)
-                    <div class="bg-green-50 border border-green-200 rounded-xl p-6 mt-6">
-                        <h4 class="text-xs font-bold text-green-800 uppercase mb-2">{{ __('Catatan IT Fulfillment') }}</h4>
-                        <p class="text-sm text-green-700">{{ $assetRequest->admin_notes }}</p>
+                @if($assetRequest->admin_notes || $assetRequest->items->whereNotNull('product_id')->count() > 0)
+                    <div class="bg-green-50 border border-green-200 rounded-xl p-6 mt-6 shadow-sm">
+                        <h4 class="text-xs font-bold text-green-800 uppercase mb-4 flex items-center">
+                            <span class="mr-2">✅</span> {{ __('Informasi IT Fulfillment') }}
+                        </h4>
+                        
+                        @if($assetRequest->items->whereNotNull('product_id')->count() > 0)
+                            <div class="mb-4 space-y-2">
+                                <p class="text-[10px] font-bold text-green-600 uppercase">{{ __('Aset Yang Diberikan') }}:</p>
+                                @foreach($assetRequest->items->whereNotNull('product_id') as $item)
+                                    <div class="flex items-center gap-3 p-2 bg-white rounded border border-green-100 text-sm">
+                                        <span class="w-8 h-8 bg-green-100 text-green-600 rounded flex items-center justify-center font-bold">📦</span>
+                                        <div>
+                                            <p class="font-bold text-green-800">{{ $item->classification->nama_klasifikasi }} {{ $item->product->full_nomor_unik }}</p>
+                                            <p class="text-[10px] text-green-600 italic">S/N: {{ $item->product->serial_number ?? '-' }}</p>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        @if($assetRequest->admin_notes)
+                            <div class="pt-3 border-t border-green-100">
+                                <p class="text-[10px] font-bold text-green-600 uppercase mb-1">{{ __('Catatan Tambahan') }}:</p>
+                                <p class="text-sm text-green-700 italic">"{{ $assetRequest->admin_notes }}"</p>
+                            </div>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -387,29 +413,27 @@
                             <div>
                                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-3">{{ $stage['label'] }}</p>
                                 @if($stage['approved'] && $stage['user'])
-                                    <div class="signature-box">
-                                        <div class="signed-badge">
-                                            <svg class="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                                            <span class="text-[9px] font-bold text-green-600 uppercase">{{ __('Signed') }}</span>
+                                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                                        <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center shadow-sm">
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                                         </div>
-                                        
-                                        @if($stage['user']->signature_path)
-                                            <img src="{{ asset('storage/' . $stage['user']->signature_path) }}" class="signature-img" alt="Signature">
-                                        @else
-                                            <span class="signature-font">{{ $stage['user']->name }}</span>
-                                        @endif
-
-                                        <div class="mt-2 text-center">
-                                            <p class="text-[10px] font-bold text-[#4a554a]">{{ $stage['user']->name }}</p>
-                                            <p class="text-[8px] text-gray-400">{{ $stage['date'] ? $stage['date']->format('d/m/Y H:i') : '' }}</p>
+                                        <div>
+                                            <p class="text-xs font-bold text-[#4a554a]">{{ $stage['user']->name }}</p>
+                                            <p class="text-[9px] text-green-600 font-bold uppercase tracking-wider">{{ __('Approved') }} • {{ $stage['date'] ? $stage['date']->format('d/m/Y H:i') : '' }}</p>
                                         </div>
                                     </div>
                                     @if($stage['comment'])
-                                        <p class="mt-2 text-xs text-gray-500 italic px-2">"{{ $stage['comment'] }}"</p>
+                                        <p class="mt-2 text-xs text-gray-500 italic px-2 border-l-2 border-gray-200 ml-4">"{{ $stage['comment'] }}"</p>
                                     @endif
                                 @else
-                                    <div class="border-2 border-dashed border-gray-100 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50/50">
-                                        <span class="text-[10px] font-bold text-gray-300 uppercase">{{ __('Menunggu Persetujuan') }}</span>
+                                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 opacity-60">
+                                        <div class="w-8 h-8 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center">
+                                            <span class="text-xs">?</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-gray-400">{{ __('Belum Ada Tindakan') }}</p>
+                                            <p class="text-[9px] text-gray-400 uppercase tracking-wider">{{ __('Awaiting Approval') }}</p>
+                                        </div>
                                     </div>
                                 @endif
                             </div>

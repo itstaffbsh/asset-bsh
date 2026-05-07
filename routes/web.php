@@ -114,10 +114,13 @@ Route::middleware('auth')->group(function () {
     // [RESOURCE] | Manajemen Permintaan Aset (Asset Requests)
     // Rute GET statis harus didefinisikan SEBELUM resource agar tidak teroverride
     Route::get('asset-requests/{assetRequest}/print', [\App\Http\Controllers\AssetRequestController::class, 'print'])->name('asset-requests.print');
-    Route::resource('asset-requests', \App\Http\Controllers\AssetRequestController::class)->middleware('permission:requests.view|requests.create');
-    Route::resource('roles', \App\Http\Controllers\RoleController::class);
-    Route::get('roles/{role}/detail', [\App\Http\Controllers\RoleController::class, 'detail'])->name('roles.detail');
-    Route::put('roles/{role}/permissions', [\App\Http\Controllers\RoleController::class, 'updatePermissions'])->name('roles.permissions');
+    Route::resource('asset-requests', \App\Http\Controllers\AssetRequestController::class)->middleware('permission:requests.view');
+    // [RESOURCE] | Role & Hak Akses
+    Route::middleware('permission:roles.manage')->group(function() {
+        Route::resource('roles', \App\Http\Controllers\RoleController::class);
+        Route::get('roles/{role}/detail', [\App\Http\Controllers\RoleController::class, 'detail'])->name('roles.detail');
+        Route::put('roles/{role}/permissions', [\App\Http\Controllers\RoleController::class, 'updatePermissions'])->name('roles.permissions');
+    });
     // Approval & Rejection: dicek berdasarkan permission, bukan slug role
     Route::middleware('permission:requests.approve_stage_1|requests.approve_stage_2|requests.approve_stage_3|requests.approve_stage_4')->group(function() {
         Route::post('asset-requests/{assetRequest}/approve', [\App\Http\Controllers\AssetRequestController::class, 'approve'])->name('asset-requests.approve');
@@ -129,40 +132,44 @@ Route::middleware('auth')->group(function () {
 /* | [GRUP ROUTE] | AKSES DINAMIS (Berdasarkan Permission) */
 Route::middleware(['auth'])->group(function () {
     // === [ MANAJEMEN ASET ] ===
-    Route::get('/products', [AsetController::class, 'index'])->name('products.index')->middleware('permission:assets.view');
-    Route::get('/products/create', [AsetController::class, 'create'])->name('products.create')->middleware('permission:assets.create');
-    Route::post('/products', [AsetController::class, 'store'])->name('products.store')->middleware('permission:assets.create');
+    Route::get('/products', [AsetController::class, 'index'])->name('products.index')->middleware('permission:products.view');
+    Route::get('/products/create', [AsetController::class, 'create'])->name('products.create')->middleware('permission:products.create');
+    Route::post('/products', [AsetController::class, 'store'])->name('products.store')->middleware('permission:products.create');
     
-    Route::get('/products-export', [AsetController::class, 'export'])->name('products.export')->middleware('permission:assets.export');
-    Route::post('/products-import', [AsetController::class, 'import'])->name('products.import')->middleware('permission:assets.import');
+    Route::get('/products-export', [AsetController::class, 'export'])->name('products.export')->middleware('permission:products.export');
+    Route::post('/products-import', [AsetController::class, 'import'])->name('products.import')->middleware('permission:products.import');
     
-    Route::get('/products/next-nomor/{department_id}', [AsetController::class, 'getNextNomor'])->name('products.nextNomor')->middleware('permission:assets.create|assets.edit');
+    Route::get('/products/next-nomor/{department_id}', [AsetController::class, 'getNextNomor'])->name('products.nextNomor')->middleware('permission:products.create|products.edit');
     
     // Wildcard routes ditaruh di bawah agar tidak menabrak rute statis (seperti /products/create)
-    Route::get('/products/{product}', [AsetController::class, 'show'])->name('products.show')->middleware('permission:assets.view');
-    Route::get('/products/{product}/edit', [AsetController::class, 'edit'])->name('products.edit')->middleware('permission:assets.edit');
-    Route::put('/products/{product}', [AsetController::class, 'update'])->name('products.update')->middleware('permission:assets.edit');
-    Route::get('/products/{product}/qr', [AsetController::class, 'printQr'])->name('products.qr')->middleware('permission:assets.qr');
+    Route::get('/products/{product}', [AsetController::class, 'show'])->name('products.show')->middleware('permission:products.view');
+    Route::get('/products/{product}/edit', [AsetController::class, 'edit'])->name('products.edit')->middleware('permission:products.edit');
+    Route::put('/products/{product}', [AsetController::class, 'update'])->name('products.update')->middleware('permission:products.edit');
+    Route::get('/products/{product}/qr', [AsetController::class, 'printQr'])->name('products.qr')->middleware('permission:products.view');
 
     // === [ TRANSAKSI & STTB ] ===
-    Route::get('/transfer/pinjam', [AsetController::class, 'pinjam'])->name('products.meminjam')->middleware('permission:transactions.loan');
-    Route::get('/transfer/kembali', [AsetController::class, 'kembali'])->name('products.kembali')->middleware('permission:transactions.return');
-    Route::post('/transfer/store', [AsetController::class, 'storeTransfer'])->name('products.storeTransfer')->middleware('permission:transactions.loan|transactions.return');
-    Route::get('/sttb/{batch_id}', [AsetController::class, 'showSttb'])->name('sttb.show')->middleware('permission:transactions.sttb');
+    Route::get('/transfer/pinjam', [AsetController::class, 'pinjam'])->name('products.meminjam')->middleware('permission:transactions.transfer');
+    Route::get('/transfer/kembali', [AsetController::class, 'kembali'])->name('products.kembali')->middleware('permission:transactions.transfer');
+    Route::post('/transfer/store', [AsetController::class, 'storeTransfer'])->name('products.storeTransfer')->middleware('permission:transactions.transfer');
+    Route::get('/sttb/{batch_id}', [AsetController::class, 'showSttb'])->name('sttb.show')->middleware('permission:transactions.transfer');
 
     // === [ DATA EMPLOYEE ] ===
-    Route::get('/employees/data', [UserController::class, 'employeeData'])->name('employees.data')->middleware('permission:users.view');
-    Route::get('/employees/export', [UserController::class, 'export'])->name('employees.export')->middleware('permission:users.view');
-    Route::post('/employees/import', [UserController::class, 'import'])->name('employees.import')->middleware('permission:users.create');
-    Route::get('/employees/{user}/details', [UserController::class, 'details'])->name('employees.details')->middleware('permission:users.view');
+    Route::get('/employees/data', [UserController::class, 'employeeData'])->name('employees.data')->middleware('permission:users.view_employee_data');
+    Route::get('/employees/create', [UserController::class, 'createEmployee'])->name('employees.create')->middleware('permission:users.create_employee');
+    Route::post('/employees/store', [UserController::class, 'storeEmployee'])->name('employees.store')->middleware('permission:users.create_employee');
+    Route::get('/employees/{user}/edit-employee', [UserController::class, 'editEmployee'])->name('employees.edit')->middleware('permission:users.edit_employee');
+    Route::put('/employees/{user}/update-employee', [UserController::class, 'updateEmployee'])->name('employees.update')->middleware('permission:users.edit_employee');
+    Route::get('/employees/export', [UserController::class, 'export'])->name('employees.export')->middleware('permission:users.export');
+    Route::post('/employees/import', [UserController::class, 'import'])->name('employees.import')->middleware('permission:users.import');
+    Route::get('/employees/{user}/details', [UserController::class, 'details'])->name('employees.details')->middleware('permission:users.view_employee_data');
 
     // === [ MANAGEMENT ACCOUNT ] ===
-    Route::get('/accounts', [UserController::class, 'accountManagement'])->name('accounts.index')->middleware('permission:users.view|users.create|users.edit_profile|users.edit_placement|users.edit_job|users.edit_role');
+    Route::get('/accounts', [UserController::class, 'accountManagement'])->name('accounts.index')->middleware('permission:users.view');
     Route::get('/accounts/create', [UserController::class, 'create'])->name('accounts.create')->middleware('permission:users.create');
     Route::post('/accounts', [UserController::class, 'store'])->name('accounts.store')->middleware('permission:users.create');
-    Route::get('/accounts/{user}/edit', [UserController::class, 'edit'])->name('accounts.edit')->middleware('permission:users.edit_profile|users.edit_placement|users.edit_job|users.edit_role');
-    Route::put('/accounts/{user}', [UserController::class, 'update'])->name('accounts.update')->middleware('permission:users.edit_profile|users.edit_placement|users.edit_job|users.edit_role');
-    Route::get('/accounts/resigned', [UserController::class, 'resignedIndex'])->name('accounts.resigned')->middleware('permission:users.view');
+    Route::get('/accounts/{user}/edit', [UserController::class, 'edit'])->name('accounts.edit')->middleware('permission:users.edit');
+    Route::put('/accounts/{user}', [UserController::class, 'update'])->name('accounts.update')->middleware('permission:users.edit');
+    Route::get('/accounts/resigned', [UserController::class, 'resignedIndex'])->name('accounts.resigned')->middleware('permission:users.view_resigned');
     Route::post('/accounts/{user}/resign', [UserController::class, 'resign'])->name('accounts.resign')->middleware('permission:users.resign');
     Route::post('/accounts/{user}/make-admin', [UserController::class, 'makeAdmin'])->name('accounts.make-admin')->middleware('permission:users.edit_role');
 
@@ -172,17 +179,17 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('departments', \App\Http\Controllers\DepartmentController::class)->middleware('permission:master.departments');
 
     // === [ PENGHAPUSAN ASET (TEMPAT SAMPAH) ] ===
-    Route::delete('/products/{product}', [AsetController::class, 'destroy'])->name('products.destroy')->middleware('permission:assets.delete');
-    Route::get('/products-trash', [AsetController::class, 'trashIndex'])->name('products.trash')->middleware('permission:assets.delete');
-    Route::post('/products-trash/{id}/restore', [AsetController::class, 'restore'])->name('products.restore')->middleware('permission:assets.delete');
-    Route::delete('/products-trash/{id}/force', [AsetController::class, 'forceDelete'])->name('products.forceDelete')->middleware('permission:assets.delete');
+    Route::delete('/products/{product}', [AsetController::class, 'destroy'])->name('products.destroy')->middleware('permission:products.delete');
+    Route::get('/products-trash', [AsetController::class, 'trashIndex'])->name('products.trash')->middleware('permission:products.trash');
+    Route::post('/products-trash/{id}/restore', [AsetController::class, 'restore'])->name('products.restore')->middleware('permission:products.trash');
+    Route::delete('/products-trash/{id}/force', [AsetController::class, 'forceDelete'])->name('products.forceDelete')->middleware('permission:products.trash');
 
     // === [ RIWAYAT MUTASI ] ===
-    Route::get('/history', [AsetController::class, 'historyIndex'])->name('history.index')->middleware('permission:transactions.history');
-    Route::get('/history/{productHistory}/edit', [AsetController::class, 'editHistory'])->name('history.edit')->middleware('permission:transactions.history');
-    Route::put('/history/{productHistory}', [AsetController::class, 'updateHistory'])->name('history.update')->middleware('permission:transactions.history');
-    Route::post('/history/{productHistory}/quick-return', [AsetController::class, 'quickReturn'])->name('history.quickReturn')->middleware('permission:transactions.history');
-    Route::delete('/history/{productHistory}/cancel', [AsetController::class, 'cancelHistory'])->name('history.cancel')->middleware('permission:transactions.history');
+    Route::get('/history', [AsetController::class, 'historyIndex'])->name('history.index')->middleware('permission:transactions.edit_history');
+    Route::get('/history/{productHistory}/edit', [AsetController::class, 'editHistory'])->name('history.edit')->middleware('permission:transactions.edit_history');
+    Route::put('/history/{productHistory}', [AsetController::class, 'updateHistory'])->name('history.update')->middleware('permission:transactions.edit_history');
+    Route::post('/history/{productHistory}/quick-return', [AsetController::class, 'quickReturn'])->name('history.quickReturn')->middleware('permission:transactions.edit_history');
+    Route::delete('/history/{productHistory}/cancel', [AsetController::class, 'cancelHistory'])->name('history.cancel')->middleware('permission:transactions.edit_history');
 });
 
 /* | [GRUP ROUTE] | AKSES SCAN QR (Akses Publik via HP) */

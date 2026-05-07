@@ -26,6 +26,7 @@ class AsetController extends Controller
     */
     public function index(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('products.view'), 403);
         $searchTerm    = $request->get('q');
         $filterDept    = $request->get('department_id');
         $filterKantor  = $request->get('office_id');
@@ -76,6 +77,7 @@ class AsetController extends Controller
     */
     public function export()
     {
+        abort_if(!auth()->user()->hasPermission('products.export'), 403);
         return Excel::download(new ProductsExport, 'data_aset_it.xlsx');
     }
 
@@ -84,6 +86,7 @@ class AsetController extends Controller
     */
     public function import(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('products.import'), 403);
         $request->validate(['file' => 'required|mimes:xlsx,xls,csv']);
         Excel::import(new ProductsImport, $request->file('file'));
         return back()->with('success', __('Data aset berhasil diimport.'));
@@ -92,6 +95,7 @@ class AsetController extends Controller
     /* | [PROSEDUR] | \n       | Kegunaan: Menampilkan form untuk menambah aset baru.\n    */
     public function create()
     {
+        abort_if(!auth()->user()->hasPermission('products.create'), 403);
         $departments = Department::all();
         $classifications = Classification::all();
         return view('products.create', compact('departments', 'classifications'));
@@ -121,6 +125,7 @@ class AsetController extends Controller
     */
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('products.create'), 403);
         /* | [ARRAY] | Daftar aturan validasi input */
         $request->validate([
             'description'      => 'required|string|max:255',
@@ -161,6 +166,7 @@ class AsetController extends Controller
     */
     public function show($id)
     {
+        abort_if(!auth()->user()->hasPermission('products.view'), 403);
         $product = Aset::with(['department', 'classification', 'histories.sender', 'histories.receiver.office'])->findOrFail($id);
         return view('products.show', compact('product'));
     }
@@ -170,6 +176,7 @@ class AsetController extends Controller
     */
     public function edit($id)
     {
+        abort_if(!auth()->user()->hasPermission('products.edit'), 403);
         $product = Aset::findOrFail($id);
         $departments = Department::all();
         $classifications = Classification::all();
@@ -181,6 +188,7 @@ class AsetController extends Controller
     */
     public function update(Request $request, $id)
     {
+        abort_if(!auth()->user()->hasPermission('products.edit'), 403);
         $product = Aset::findOrFail($id);
         /* | [ARRAY] | Aturan validasi pembaruan data */
         $request->validate([
@@ -220,6 +228,7 @@ class AsetController extends Controller
     */
     public function destroy(Request $request, $id)
     {
+        abort_if(!auth()->user()->hasPermission('products.delete'), 403);
         $product = Aset::findOrFail($id);
         $product->update([
             'deletion_reason' => $request->deletion_reason,
@@ -234,6 +243,7 @@ class AsetController extends Controller
     */
     public function trashIndex()
     {
+        abort_if(!auth()->user()->hasPermission('products.trash'), 403);
         $trashedProducts = Aset::onlyTrashed()->with(['department', 'classification'])->get();
         return view('products.trash', compact('trashedProducts'));
     }
@@ -243,6 +253,7 @@ class AsetController extends Controller
     */
     public function restore($id)
     {
+        abort_if(!auth()->user()->hasPermission('products.trash'), 403);
         Aset::onlyTrashed()->findOrFail($id)->restore();
         return redirect()->route('products.trash')->with('success', __('Aset dikembalikan.'));
     }
@@ -252,6 +263,7 @@ class AsetController extends Controller
     */
     public function forceDelete($id)
     {
+        abort_if(!auth()->user()->hasPermission('products.trash'), 403);
         $product = Aset::onlyTrashed()->findOrFail($id);
         $product->histories()->delete();
         $product->forceDelete();
@@ -263,6 +275,7 @@ class AsetController extends Controller
     */
     public function printQr($id)
     {
+        abort_if(!auth()->user()->hasPermission('products.view'), 403);
         $product = Aset::findOrFail($id);
         $url = route('scan.show', $product->url_token);
         $qrCode = QrCode::size(300)->generate($url);
@@ -274,6 +287,7 @@ class AsetController extends Controller
     */
     public function historyIndex(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.view_history'), 403);
         $searchTerm     = $request->get('q');
         $filterDept     = $request->get('department_id');
         $filterKantor   = $request->get('office_id');
@@ -311,6 +325,7 @@ class AsetController extends Controller
     */
     public function editHistory(ProductHistory $productHistory)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.edit_history'), 403);
         $users = User::where('role', 'user')->get();
         return view('products.edit_history', compact('productHistory', 'users'));
     }
@@ -320,6 +335,7 @@ class AsetController extends Controller
     */
     public function updateHistory(Request $request, ProductHistory $productHistory)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.edit_history'), 403);
         $request->validate(['diterima_oleh' => 'required|exists:users,id']);
         $productHistory->update(['diterima_oleh' => $request->diterima_oleh]);
         return redirect()->route('products.show', $productHistory->product_id)->with('success', __('Riwayat diupdate.'));
@@ -330,12 +346,14 @@ class AsetController extends Controller
     */
     public function cancelHistory(ProductHistory $productHistory)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.edit_history'), 403);
         $productHistory->delete();
         return back()->with('success', __('Riwayat dibatalkan.'));
     }
 
     public function quickReturn(ProductHistory $productHistory)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.edit_history'), 403);
         // Validasi: pastikan record ini adalah peminjaman terakhir yang aktif
         $latest = ProductHistory::where('product_id', $productHistory->product_id)->latest()->first();
         if ($latest->id !== $productHistory->id || $latest->jenis_transaksi !== 'meminjam') {
@@ -358,6 +376,7 @@ class AsetController extends Controller
     */
     public function pinjam(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.transfer'), 403);
         return $this->handleTransfer($request, 'meminjam');
     }
 
@@ -366,6 +385,7 @@ class AsetController extends Controller
     */
     public function kembali(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.transfer'), 403);
         return $this->handleTransfer($request, 'kembali');
     }
 
@@ -427,6 +447,7 @@ class AsetController extends Controller
     */
     public function storeTransfer(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.transfer'), 403);
         $request->validate([
             'jenis_transaksi' => 'required|in:meminjam,kembali',
         ]);
@@ -469,6 +490,7 @@ class AsetController extends Controller
     */
     public function showSttb($batchId)
     {
+        abort_if(!auth()->user()->hasPermission('transactions.transfer'), 403);
         // Ambil semua riwayat dalam satu batch, beserta relasi yang dibutuhkan
         $histories = ProductHistory::with(['product.department', 'receiver', 'pihakPertama'])
             ->where('batch_id', $batchId)

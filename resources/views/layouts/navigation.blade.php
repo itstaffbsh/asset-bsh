@@ -6,10 +6,7 @@
                 <!-- [BAGIAN: LOGO] | Identitas Sistem -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="flex items-center gap-2 group">
-                        <div class="w-8 h-8 bg-[#5c6b5b] rounded-lg flex items-center justify-center text-white text-lg shadow-sm group-hover:bg-[#4a554a] transition">
-                            🏰
-                        </div>
-                        <span class="font-serif font-bold text-xl text-[#4a554a] tracking-tight">BSH ASSET</span>
+                        <img src="{{ asset('images/Primier-Logo.webp') }}" alt="BSH Logo" class="h-9 w-auto object-contain">
                     </a>
                 </div>
 
@@ -26,7 +23,7 @@
                     @endif
 
                     {{-- [MENU KHUSUS] | Master Data (Muncul jika punya salah satu akses) --}}
-                    @if(auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('roles.manage') || auth()->user()->hasPermission('master.offices') || auth()->user()->hasPermission('master.classifications') || auth()->user()->hasPermission('master.departments'))
+                    @if(auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('users.view_employee_data') || auth()->user()->hasPermission('roles.manage') || auth()->user()->hasPermission('master.offices') || auth()->user()->hasPermission('master.classifications') || auth()->user()->hasPermission('master.departments'))
                         <div class="hidden sm:flex sm:items-center">
                             <x-dropdown align="left" width="48">
                                 <x-slot name="trigger">
@@ -40,8 +37,10 @@
                                     </button>
                                 </x-slot>
                                 <x-slot name="content">
-                                     @if(auth()->user()->hasPermission('users.view'))
+                                     @if(auth()->user()->hasPermission('users.view_employee_data'))
                                          <x-dropdown-link :href="route('employees.data')">{{ __('Data Employee') }}</x-dropdown-link>
+                                     @endif
+                                     @if(auth()->user()->hasPermission('users.view'))
                                          <x-dropdown-link :href="route('accounts.index')">{{ __('Management Account') }}</x-dropdown-link>
                                      @endif
                                      @if(auth()->user()->hasPermission('roles.manage'))
@@ -57,7 +56,7 @@
                                          <x-dropdown-link :href="route('departments.index')">{{ __('Departemen') }}</x-dropdown-link>
                                      @endif
                                      <div class="border-t border-gray-100"></div>
-                                     @if(auth()->user()->hasPermission('assets.delete'))
+                                     @if(auth()->user()->hasPermission('products.trash'))
                                          <x-dropdown-link :href="route('products.trash')" class="text-red-500">{{ __('Tempat Sampah') }}</x-dropdown-link>
                                      @endif
                                 </x-slot>
@@ -66,13 +65,13 @@
                     @endif
 
                     {{-- [MENU OPERASIONAL] | Aset dan Transaksi --}}
-                    @if(auth()->user()->hasPermission('assets.view'))
+                    @if(auth()->user()->hasPermission('products.view'))
                         <x-nav-link :href="route('products.index')" :active="request()->routeIs('products.index')">
                             {{ __('Daftar Aset') }}
                         </x-nav-link>
                     @endif
 
-                    @if(auth()->user()->hasPermission('transactions.loan') || auth()->user()->hasPermission('transactions.return'))
+                    @if(auth()->user()->hasPermission('transactions.transfer'))
                         <div class="hidden sm:flex sm:items-center">
                             <x-dropdown align="left" width="48">
                                 <x-slot name="trigger">
@@ -86,10 +85,8 @@
                                     </button>
                                 </x-slot>
                                 <x-slot name="content">
-                                     @if(auth()->user()->hasPermission('transactions.loan'))
+                                     @if(auth()->user()->hasPermission('transactions.transfer'))
                                          <x-dropdown-link :href="route('products.meminjam')">{{ __('Pinjam Aset') }}</x-dropdown-link>
-                                     @endif
-                                     @if(auth()->user()->hasPermission('transactions.return'))
                                          <x-dropdown-link :href="route('products.kembali')">{{ __('Kembali Aset') }}</x-dropdown-link>
                                      @endif
                                 </x-slot>
@@ -97,7 +94,7 @@
                         </div>
                     @endif
 
-                    @if(auth()->user()->hasPermission('transactions.history'))
+                    @if(auth()->user()->hasPermission('transactions.view_history'))
                         <x-nav-link :href="route('history.index')" :active="request()->routeIs('history.*')">
                             {{ __('Riwayat Mutasi') }}
                         </x-nav-link>

@@ -293,9 +293,14 @@
             <td class="col-5" style="text-align:left; padding-left:6px;"><span class="cb"><span class="cb-box checked">✓</span> YES</span></td>
             <td class="col-6" style="text-align:left; padding-left:6px;"><span class="cb"><span class="cb-box"></span> NO</span></td>
             <td class="col-7">
+                @if($item->product)
+                    <div style="font-weight: bold; color: #000;">
+                        {{ $item->classification->nama_klasifikasi }} {{ $item->product->full_nomor_unik }}
+                    </div>
+                @endif
                 {{ $item->specs ?? '' }}
                 @if($assetRequest->admin_notes && $i === 0)
-                    <em>{{ $assetRequest->admin_notes }}</em>
+                    <div style="font-style: italic; font-size: 8pt; margin-top: 2px;">Note: {{ $assetRequest->admin_notes }}</div>
                 @endif
             </td>
         </tr>
@@ -435,8 +440,20 @@
                     @if($assetRequest->it_comment)
                         <p class="comment-text">{{ $assetRequest->it_comment }}</p>
                     @endif
+
+                    @if($assetRequest->items->whereNotNull('product_id')->count() > 0)
+                        <div style="margin-top:4px; text-align:center;">
+                            @foreach($assetRequest->items->whereNotNull('product_id') as $item)
+                                <div style="font-size:8pt;">
+                                    {{ $item->classification->nama_klasifikasi }} {{ $item->product->full_nomor_unik }} 
+                                    (S/N: {{ $item->product->serial_number ?? '-' }})
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
                     @if($assetRequest->admin_notes)
-                        <p class="comment-text" style="margin-top:4px;">{{ $assetRequest->admin_notes }}</p>
+                        <p class="comment-text" style="margin-top:4px; font-style: italic;">"{{ $assetRequest->admin_notes }}"</p>
                     @endif
                 </div>
             </div>

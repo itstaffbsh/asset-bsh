@@ -95,8 +95,18 @@ class AssetRequestController extends Controller
     /* | [LOGIKA] | Detail permintaan & form persetujuan */
     public function show(AssetRequest $assetRequest)
     {
-        $assetRequest->load(['user', 'department', 'hrManager', 'items.classification', 'approvals.user']);
-        return view('asset_requests.show', compact('assetRequest'));
+        $assetRequest->load(['user', 'department', 'hrManager', 'items.classification', 'items.product.department', 'approvals.user']);
+        
+        // Ambil produk yang tersedia untuk tiap klasifikasi yang diminta
+        $availableProducts = [];
+        foreach ($assetRequest->items as $item) {
+            $availableProducts[$item->classification_id] = \App\Models\Product::with('department')
+                ->where('classification_id', $item->classification_id)
+                ->whereNull('deleted_at')
+                ->get();
+        }
+
+        return view('asset_requests.show', compact('assetRequest', 'availableProducts'));
     }
 
     /* | [LOGIKA] | Tampilan cetak EWTR */
@@ -105,7 +115,7 @@ class AssetRequestController extends Controller
         if ($assetRequest->status !== 'approved') {
             return back()->with('error', __('EWTR hanya bisa dicetak setelah semua tahap persetujuan selesai.'));
         }
-        $assetRequest->load(['user', 'department', 'hrManager', 'items.classification', 'approvals.user']);
+        $assetRequest->load(['user', 'department', 'hrManager', 'items.classification', 'items.product.department', 'approvals.user']);
         return view('asset_requests.print', compact('assetRequest'));
     }
 
@@ -178,38 +188,66 @@ class AssetRequestController extends Controller
     public function finalize(Request $request, AssetRequest $assetRequest)
     {
         $user = auth()->user();
-        if (!$user->hasRoleLevel('superadmin')) {
-            return back()->with('error', __('Hanya Super Admin yang dapat melakukan finalisasi.'));
+        if (!$user->hasPermission('requests.finalize')) {
+            return back()->with('error', __('Hanya user dengan izin khusus yang dapat melakukan finalisasi.'));
         }
 
         $request->validate([
-            'admin_notes' => 'required',
+            'admin_notes' => 'nullable',
+            'products' => 'nullable|array',
         ]);
 
-        $assetRequest->admin_notes = $request->admin_notes;
-        $assetRequest->status = 'approved';
-        $assetRequest->save();
+        DB::transaction(function () use ($request, $assetRequest, $user) {
+            $assetRequest->admin_notes = $request->admin_notes;
+            $assetRequest->status = 'approved';
+            $assetRequest->save();
 
-        AssetRequestApproval::create([
-            'asset_request_id' => $assetRequest->id,
-            'user_id' => $user->id,
-            'level' => 'executor',
-            'status' => 'approved',
-            'comment' => $request->admin_notes,
-        ]);
+            // Simpan produk yang dipilih untuk tiap item
+            if ($request->has('products')) {
+                foreach ($request->products as $itemId => $productId) {
+                    if ($productId) {
+                        $item = AssetRequestItem::find($itemId);
+                        if ($item && $item->asset_request_id == $assetRequest->id) {
+                            $item->product_id = $productId;
+                            $item->save();
+                        }
+                    }
+                }
+            }
+
+            AssetRequestApproval::create([
+                'asset_request_id' => $assetRequest->id,
+                'user_id' => $user->id,
+                'level' => 'executor',
+                'status' => 'approved',
+                'comment' => $request->admin_notes,
+            ]);
+        });
 
         return back()->with('success', __('Permintaan telah difinalisasi dan siap dicetak.'));
     }
 
     public function reject(Request $request, AssetRequest $assetRequest)
     {
+        $currentStatus = $assetRequest->status;
+        $level = $this->getLevelFromStatus($currentStatus);
+
         $assetRequest->status = 'rejected';
         $assetRequest->save();
+
+        // Tandai semua item sebagai 'no' untuk tahap ini
+        foreach ($assetRequest->items as $item) {
+            $column = $level . '_approval';
+            if (\Illuminate\Support\Facades\Schema::hasColumn('asset_request_items', $column)) {
+                $item->$column = false;
+                $item->save();
+            }
+        }
 
         AssetRequestApproval::create([
             'asset_request_id' => $assetRequest->id,
             'user_id' => auth()->id(),
-            'level' => $this->getLevelFromStatus($assetRequest->status),
+            'level' => $level,
             'status' => 'rejected',
             'comment' => $request->comment,
         ]);

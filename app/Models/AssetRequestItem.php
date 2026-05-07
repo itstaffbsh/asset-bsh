@@ -36,4 +36,9 @@ class AssetRequestItem extends Model
     {
         return $this->belongsTo(Classification::class);
     }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 }

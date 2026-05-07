@@ -3,29 +3,19 @@
         <div class="flex justify-between items-center">
             <h2 class="font-serif text-2xl font-bold text-[#4a554a] leading-tight">{{ __('Manajemen Akun Karyawan') }}</h2>
             <div class="flex gap-2">
-                <a href="{{ route('employees.export') }}" class="bg-[#a47b53] text-white px-4 py-2 rounded-md shadow hover:bg-[#8b6540] transition font-bold text-sm">{{ __('EXPORT EXCEL') }}</a>
-                <button onclick="document.getElementById('import-modal').classList.remove('hidden')" class="bg-[#d1cdba] text-[#4a554a] px-4 py-2 rounded-md shadow hover:bg-[#c4c0a8] transition font-bold text-sm">{{ __('IMPORT EXCEL') }}</button>
-                <a href="{{ route('accounts.create') }}" class="bg-[#5c6b5b] text-[#f4f1ea] px-4 py-2 rounded-md shadow hover:bg-[#4a554a] transition font-bold text-sm">+ {{ __('TAMBAH AKUN') }}</a>
-                <a href="{{ route('accounts.resigned') }}" class="bg-red-50 text-red-600 px-4 py-2 rounded-md border border-red-100 hover:bg-red-100 transition font-bold text-sm">🚪 {{ __('LIHAT RESIGN') }}</a>
+
+                @if(auth()->user()->hasPermission('users.create'))
+                    <a href="{{ route('accounts.create') }}" class="bg-[#5c6b5b] text-[#f4f1ea] px-4 py-2 rounded-md shadow hover:bg-[#4a554a] transition font-bold text-sm">+ {{ __('TAMBAH AKUN') }}</a>
+                @endif
+                @if(auth()->user()->hasPermission('users.view_resigned'))
+                    <a href="{{ route('accounts.resigned') }}" class="bg-red-50 text-red-600 px-4 py-2 rounded-md border border-red-100 hover:bg-red-100 transition font-bold text-sm">🚪 {{ __('LIHAT RESIGN') }}</a>
+                @endif
             </div>
         </div>
     </x-slot>
 
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        {{-- Import Modal --}}
-        <div id="import-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white p-8 rounded-xl shadow-xl w-96">
-                <h3 class="text-lg font-bold mb-4">{{ __('Import Data Karyawan') }}</h3>
-                <form action="{{ route('employees.import') }}" method="POST" enctype="multipart/form-data">
-                    @csrf
-                    <input type="file" name="file" class="mb-4 w-full" required>
-                    <div class="flex justify-end gap-2">
-                        <button type="button" onclick="document.getElementById('import-modal').classList.add('hidden')" class="px-4 py-2 text-gray-500">{{ __('Batal') }}</button>
-                        <button type="submit" class="bg-[#5c6b5b] text-white px-4 py-2 rounded-md">{{ __('Upload') }}</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+
 
         <div class="bg-white rounded-xl shadow-sm border border-[#e5e0d8] overflow-hidden">
             <div class="p-8">

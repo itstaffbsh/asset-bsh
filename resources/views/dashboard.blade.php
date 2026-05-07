@@ -15,7 +15,7 @@
 
         {{-- Stats --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            @if(auth()->user()->hasPermission('assets.view'))
+            @if(auth()->user()->hasPermission('products.view'))
             <div class="bg-white rounded-xl border border-[#e5e0d8] p-6 shadow-sm">
                 <p class="text-sm text-gray-400 mb-1">{{ __('Total Aset') }}</p>
                 <p class="text-3xl font-bold text-[#4a554a]">{{ \App\Models\Aset::count() }}</p>
@@ -27,7 +27,7 @@
                 <p class="text-3xl font-bold text-[#4a554a]">{{ \App\Models\Department::count() }}</p>
             </div>
             @endif
-            @if(auth()->user()->hasPermission('transactions.history'))
+            @if(auth()->user()->hasPermission('transactions.view_history'))
             <div class="bg-white rounded-xl border border-[#e5e0d8] p-6 shadow-sm">
                 <p class="text-sm text-gray-400 mb-1">{{ __('Total Transaksi') }}</p>
                 <p class="text-3xl font-bold text-[#4a554a]">{{ \App\Models\ProductHistory::count() }}</p>
@@ -40,7 +40,7 @@
             <h4 class="font-serif text-lg font-bold text-[#4a554a] mb-4">{{ __('Menu Cepat') }}</h4>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {{-- Daftar Aset --}}
-                @if(auth()->user()->hasPermission('assets.view'))
+                @if(auth()->user()->hasPermission('products.view'))
                 <a href="{{ route('products.index') }}" class="flex flex-col items-center p-4 bg-[#f4f1ea] rounded-lg hover:bg-[#e8e4da] transition text-center border border-[#e5e0d8]">
                     <span class="text-3xl mb-2">📦</span>
                     <span class="text-sm font-semibold text-[#4a554a]">{{ __('Daftar Aset') }}</span>
@@ -55,13 +55,11 @@
                 @endif
 
                 {{-- Transaksi --}}
-                @if(auth()->user()->hasPermission('transactions.loan'))
+                @if(auth()->user()->hasPermission('transactions.transfer'))
                 <a href="{{ route('products.meminjam') }}" class="flex flex-col items-center p-4 bg-[#e8f5e4] rounded-lg hover:bg-[#d4ebd0] transition text-center border border-[#c8dfc6]">
                     <span class="text-3xl mb-2">🤝</span>
                     <span class="text-sm font-semibold text-[#3a5a3a]">{{ __('Pinjam Aset') }}</span>
                 </a>
-                @endif
-                @if(auth()->user()->hasPermission('transactions.return'))
                 <a href="{{ route('products.kembali') }}" class="flex flex-col items-center p-4 bg-[#f0f9ff] rounded-lg hover:bg-[#e0f2fe] transition text-center border border-[#bae6fd]">
                     <span class="text-3xl mb-2">🔄</span>
                     <span class="text-sm font-semibold text-[#0369a1]">{{ __('Kembali Aset') }}</span>

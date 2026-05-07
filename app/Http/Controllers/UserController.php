@@ -18,6 +18,8 @@ class UserController extends Controller
     */
     public function employeeData(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('users.view_employee_data'), 403);
+
         $searchTerm   = $request->get('q');
         $filterDept   = $request->get('department_id');
         $filterKantor = $request->get('office_id');
@@ -57,13 +59,17 @@ class UserController extends Controller
     */
     public function accountManagement(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('users.view'), 403);
+
         $searchTerm   = $request->get('q');
         $filterDept   = $request->get('department_id');
         $filterKantor = $request->get('office_id');
 
         $query = User::with(['office', 'department'])->where('id', '!=', auth()->id());
 
-        // Halaman ini hanya untuk akun aktif
+        // Halaman ini hanya untuk akun aktif yang sudah punya password
+        $query->whereNotNull('password');
+        
         if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'status')) {
             $query->where('status', 'active');
         }
@@ -92,61 +98,132 @@ class UserController extends Controller
     }
 
     /* | [PROSEDUR] | 
-       | Kegunaan: Menampilkan form untuk menambah karyawan baru.
+       | Kegunaan: Menampilkan form untuk menambah akun (memilih dari karyawan).
     */
     public function create()
     {
-        $offices = \App\Models\Office::all();
-        $departments = \App\Models\Department::all();
+        abort_if(!auth()->user()->hasPermission('users.create'), 403);
+
+        $employees = User::whereNull('password')->where('status', 'active')->orderBy('name')->get();
         $roles = \App\Models\Role::all(); // Fetch all roles
-        return view('users.create', compact('offices', 'departments', 'roles'));
+        return view('users.create', compact('employees', 'roles'));
     }
 
     /* | [PROSEDUR] | 
-       | Kegunaan: Menyimpan data karyawan baru ke database.
+       | Kegunaan: Menyimpan akun karyawan (menambahkan password dan role).
     */
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('users.create'), 403);
+
+        $request->validate([
+            'user_id'       => 'required|exists:users,id',
+            'role_id'       => 'required|exists:roles,id',
+            'password'      => 'required|min:8',
+        ]);
+
+        $role = \App\Models\Role::find($request->role_id);
+        $user = User::findOrFail($request->user_id);
+
+        if ($user->password !== null) {
+            return back()->with('error', __('Karyawan ini sudah memiliki akun.'));
+        }
+
+        // Security check: Only user with permission can assign Super Admin role
+        if ($role->slug === 'superadmin' && !auth()->user()->hasPermission('users.edit_role')) {
+            return back()->with('error', __('Hanya user dengan izin khusus yang bisa memberikan role ini.'));
+        }
+
+        $user->update([
+            'password'      => bcrypt($request->password),
+            'role_id'       => $request->role_id,
+            'role'          => $role->slug,
+        ]);
+
+        return redirect()->route('accounts.index')->with('success', __('Akun karyawan berhasil dibuat.'));
+    }
+
+    /* | [PROSEDUR DATA EMPLOYEE] | */
+    public function createEmployee()
+    {
+        abort_if(!auth()->user()->hasPermission('users.create_employee'), 403);
+
+        $offices = \App\Models\Office::all();
+        $departments = \App\Models\Department::all();
+        return view('users.employee_create', compact('offices', 'departments'));
+    }
+
+    public function storeEmployee(Request $request)
+    {
+        abort_if(!auth()->user()->hasPermission('users.create_employee'), 403);
+
         $request->validate([
             'employee_id'   => 'nullable|string|max:255|unique:users',
             'name'          => 'required|string|max:255',
             'email'         => 'required|email|unique:users',
-            'role_id'       => 'required|exists:roles,id',
             'office_id'     => 'required|exists:offices,id',
             'department_id' => 'nullable|exists:departments,id',
             'job_position'  => 'nullable|string|max:255',
             'job_level'     => 'nullable|string|max:255',
             'join_date'     => 'nullable|date',
             'phone_number'  => 'nullable|string|max:20',
-            'password'      => 'nullable|min:8',
-            'signature'     => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-
-        $role = \App\Models\Role::find($request->role_id);
-
-        // Security check: Only Super Admin can assign Super Admin role
-        if ($role->slug === 'superadmin' && !auth()->user()->hasRoleLevel('superadmin')) {
-            return back()->with('error', __('Hanya Super Admin yang bisa memberikan role ini.'));
-        }
 
         User::create([
             'employee_id'   => $request->employee_id,
             'name'          => $request->name,
             'email'         => $request->email,
-            'password'      => $request->password ? bcrypt($request->password) : null,
-            'role_id'       => $request->role_id,
-            'role'          => $role->slug, // Keep slug for legacy support
             'office_id'     => $request->office_id,
             'department_id' => $request->department_id,
             'job_position'  => $request->job_position,
             'job_level'     => $request->job_level,
             'join_date'     => $request->join_date,
             'phone_number'  => $request->phone_number,
-            'signature_path'=> $request->hasFile('signature') ? $request->file('signature')->store('signatures', 'public') : null,
+            'role'          => 'employee',
             'status'        => 'active',
         ]);
 
-        return redirect()->route('accounts.index')->with('success', __('Akun karyawan berhasil dibuat.'));
+        return redirect()->route('employees.data')->with('success', __('Data Karyawan berhasil ditambahkan.'));
+    }
+
+    public function editEmployee(User $user)
+    {
+        abort_if(!auth()->user()->hasPermission('users.edit_employee'), 403);
+
+        $offices = \App\Models\Office::all();
+        $departments = \App\Models\Department::all();
+        return view('users.employee_edit', compact('user', 'offices', 'departments'));
+    }
+
+    public function updateEmployee(Request $request, User $user)
+    {
+        abort_if(!auth()->user()->hasPermission('users.edit_employee'), 403);
+
+        $request->validate([
+            'employee_id'   => 'nullable|string|max:255|unique:users,employee_id,' . $user->id,
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|email|unique:users,email,' . $user->id,
+            'office_id'     => 'required|exists:offices,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'job_position'  => 'nullable|string|max:255',
+            'job_level'     => 'nullable|string|max:255',
+            'join_date'     => 'nullable|date',
+            'phone_number'  => 'nullable|string|max:20',
+        ]);
+
+        $user->update([
+            'employee_id'   => $request->employee_id,
+            'name'          => $request->name,
+            'email'         => $request->email,
+            'office_id'     => $request->office_id,
+            'department_id' => $request->department_id,
+            'job_position'  => $request->job_position,
+            'job_level'     => $request->job_level,
+            'join_date'     => $request->join_date,
+            'phone_number'  => $request->phone_number,
+        ]);
+
+        return redirect()->route('employees.data')->with('success', __('Data Karyawan berhasil diperbarui.'));
     }
 
     /* | [PROSEDUR] | 
@@ -154,6 +231,8 @@ class UserController extends Controller
     */
     public function edit(User $user)
     {
+        abort_if(!auth()->user()->hasPermission('users.edit'), 403);
+
         $offices = \App\Models\Office::all();
         $departments = \App\Models\Department::all();
         $roles = \App\Models\Role::all();
@@ -165,6 +244,8 @@ class UserController extends Controller
     */
     public function update(Request $request, User $user)
     {
+        abort_if(!auth()->user()->hasPermission('users.edit'), 403);
+
         $request->validate([
             'employee_id'   => 'nullable|string|max:255|unique:users,employee_id,' . $user->id,
             'name'          => 'required|string|max:255',
@@ -183,8 +264,8 @@ class UserController extends Controller
         $role = \App\Models\Role::find($request->role_id);
 
         // Security check
-        if ($role->slug === 'superadmin' && !auth()->user()->hasRoleLevel('superadmin')) {
-            return back()->with('error', __('Hanya Super Admin yang bisa memberikan role ini.'));
+        if ($role->slug === 'superadmin' && !auth()->user()->hasPermission('users.edit_role')) {
+            return back()->with('error', __('Hanya user dengan izin khusus yang bisa memberikan role ini.'));
         }
 
         $data = [];
@@ -241,11 +322,6 @@ class UserController extends Controller
     */
     public function makeAdmin(User $user)
     {
-        // Cek apakah admin yang login punya hak untuk menaikkan level ke Admin (level 2)
-        // Menurut aturan: Super Admin ke atas bisa melakukan ini.
-        if (!auth()->user()->hasRoleLevel('superadmin')) {
-            return back()->with('error', __('Maaf, Anda tidak memiliki hak untuk mengubah role user ini.'));
-        }
 
         if ($user->role !== 'admin') {
             $user->update(['role' => 'admin']);
@@ -284,10 +360,7 @@ class UserController extends Controller
 
     public function resign(User $user)
     {
-        // Pengecekan Akses: Hanya Manager (level 4) ke atas yang boleh mengakses fitur Resign
-        if (!auth()->user()->hasRoleLevel('manager')) {
-            abort(403, 'Maaf, hanya level Manager ke atas yang bisa melakukan proses Resign.');
-        }
+        abort_if(!auth()->user()->hasPermission('users.resign'), 403);
 
         if ($user->id === auth()->id()) {
             return back()->with('error', __('Anda tidak bisa meresign diri sendiri.'));
@@ -316,6 +389,8 @@ class UserController extends Controller
     */
     public function resignedIndex(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('users.view_resigned'), 403);
+
         $searchTerm = $request->get('q');
         $query = User::with(['office', 'department'])->where('status', 'resigned');
 
@@ -335,6 +410,8 @@ class UserController extends Controller
     */
     public function export()
     {
+        abort_if(!auth()->user()->hasPermission('users.export'), 403);
+
         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\UsersExport, 'data-karyawan.xlsx');
     }
 
@@ -343,6 +420,8 @@ class UserController extends Controller
     */
     public function import(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('users.import'), 403);
+
         $request->validate([
             'file' => 'required|mimes:xlsx,xls',
         ]);

@@ -9,6 +9,11 @@ use Illuminate\Support\Str;
 
 class RoleController extends Controller
 {
+    public function __construct()
+    {
+        // Permission check moved to routes/web.php
+    }
+
     public function index()
     {
         $roles = Role::withCount('permissions')->get();
@@ -51,6 +56,10 @@ class RoleController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        if ($role->slug === 'superadmin' || $role->slug === 'managing_director') {
+            return redirect()->route('roles.index')->with('error', __('Role System tidak dapat diubah namanya.'));
+        }
+
         $request->validate([
             'name' => 'required|unique:roles,name,' . $role->id,
             'description' => 'nullable|string'

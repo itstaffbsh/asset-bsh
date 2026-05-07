@@ -13,6 +13,11 @@ use Illuminate\Http\Request;
 
 class ClassificationController extends Controller
 {
+    public function __construct()
+    {
+        // Permission check moved to routes/web.php
+    }
+
     /* | [PROSEDUR] | Menampilkan daftar seluruh kategori barang */
     public function index()
     {

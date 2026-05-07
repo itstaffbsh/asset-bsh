@@ -3,8 +3,15 @@
         <div class="flex justify-between items-center">
             <h2 class="font-serif text-2xl font-bold text-[#4a554a] leading-tight">{{ __('Data Employee') }}</h2>
             <div class="flex gap-2">
-                <a href="{{ route('employees.export') }}" class="bg-[#a47b53] text-white px-4 py-2 rounded-md shadow hover:bg-[#8b6540] transition font-bold text-sm">{{ __('EXPORT EXCEL') }}</a>
-                <button onclick="document.getElementById('import-modal').classList.remove('hidden')" class="bg-[#d1cdba] text-[#4a554a] px-4 py-2 rounded-md shadow hover:bg-[#c4c0a8] transition font-bold text-sm">{{ __('IMPORT EXCEL') }}</button>
+                @if(auth()->user()->hasPermission('users.export'))
+                    <a href="{{ route('employees.export') }}" class="bg-[#a47b53] text-white px-4 py-2 rounded-md shadow hover:bg-[#8b6540] transition font-bold text-sm">{{ __('EXPORT EXCEL') }}</a>
+                @endif
+                @if(auth()->user()->hasPermission('users.import'))
+                    <button onclick="document.getElementById('import-modal').classList.remove('hidden')" class="bg-[#d1cdba] text-[#4a554a] px-4 py-2 rounded-md shadow hover:bg-[#c4c0a8] transition font-bold text-sm">{{ __('IMPORT EXCEL') }}</button>
+                @endif
+                @if(auth()->user()->hasPermission('users.create_employee'))
+                    <a href="{{ route('employees.create') }}" class="bg-[#5c6b5b] text-[#f4f1ea] px-4 py-2 rounded-md shadow hover:bg-[#4a554a] transition font-bold text-sm">+ {{ __('TAMBAH KARYAWAN') }}</a>
+                @endif
             </div>
         </div>
     </x-slot>
@@ -154,7 +161,12 @@
                                     @endif
                                 </td>
                                 <td class="py-4 px-4 text-center">
-                                    <a href="{{ route('employees.details', $user->id) }}" class="p-1.5 bg-gray-50 rounded-lg hover:bg-gray-200 transition inline-block" title="{{ __('Detail') }}">👁️</a>
+                                    <div class="flex justify-center gap-2">
+                                        @if(auth()->user()->hasPermission('users.edit_employee'))
+                                            <a href="{{ route('employees.edit', $user->id) }}" class="p-1.5 bg-gray-50 rounded-lg hover:bg-gray-200 transition" title="{{ __('Edit Karyawan') }}">✏️</a>
+                                        @endif
+                                        <a href="{{ route('employees.details', $user->id) }}" class="p-1.5 bg-gray-50 rounded-lg hover:bg-gray-200 transition inline-block" title="{{ __('Detail') }}">👁️</a>
+                                    </div>
                                 </td>
                             </tr>
                             @endforeach
